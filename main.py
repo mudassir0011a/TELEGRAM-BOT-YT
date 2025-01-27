@@ -2,35 +2,29 @@ import logging
 import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
-from yt_dlp import YoutubeDL
+import yt_dlp
 import os
 import nest_asyncio
-from dotenv import load_dotenv
 
-load_dotenv()
-BOT_TOKEN = os.getenv("7868580875:AAEejPBpzEIMsSFf2XX8hOoNQ8ehDNA5oT0")
-
-
-# Apply nest_asyncio for async compatibility
-nest_asyncio.apply()
+nest_asyncio.apply()  # Patch the event loop
 
 # Enable logging
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
-    handlers=[
-        logging.FileHandler("bot.log"),  # Logs to a file
-        logging.StreamHandler(),        # Logs to the terminal
-    ],
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
+
+# logging.basicConfig(
+#     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.WARNING
+# )
+
 logger = logging.getLogger(__name__)
 
-# # Bot token
-# BOT_TOKEN = os.getenv("7868580875:AAEejPBpzEIMsSFf2XX8hOoNQ8ehDNA5oT0")  # Replace with your BotFather token
+# Bot token
+BOT_TOKEN = "8077274379:AAFawJIixuMK47T9RpxiMv0TC_FnYLA6LWI"  # Replace with your BotFather token
 
 # Ensure the downloads folder exists
 if not os.path.exists("downloads"):
-    os.makedirs("downloads", exist_ok=True)  # Ensures no errors
+    os.makedirs("downloads")
 
 # Dictionary to store user-specific download history
 user_history = {}
@@ -38,9 +32,6 @@ user_history = {}
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = update.effective_user.first_name
-    user_id = update.effective_user.id
-    logger.info(f"INFO - User {user_name} (ID: {user_id}) started the bot.")
-
     keyboard = [
         [InlineKeyboardButton("🎥 Video Download", callback_data="video_download")],
         [InlineKeyboardButton("🎵 Audio Download", callback_data="audio_download")],
@@ -56,9 +47,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # /help command
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_name = update.effective_user.first_name
-    logger.info(f"INFO - User {user_name} invoked the /help command.")
-
     await update.message.reply_text(
         "Here are the available commands:\n"
         "/start - Start the bot and explore options.\n"
@@ -104,28 +92,23 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE, url
         "format": "best",
         "outtmpl": "downloads/%(title)s.%(ext)s",
         "quiet": True,
-        "max_filesize": 50 * 1024 * 1024,  # 50 MB limit
     }
-    try:
-        with YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            video_title = info.get("title", "video")
-            video_path = ydl.prepare_filename(info)
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        video_title = info.get("title", "video")
+        video_path = ydl.prepare_filename(info)
 
-        # Save to history
-        user_id = update.effective_user.id
-        if user_id not in user_history:
-            user_history[user_id] = []
-        user_history[user_id].append(f"Video: {video_title}")
+    # Save to history
+    user_id = update.effective_user.id
+    if user_id not in user_history:
+        user_history[user_id] = []
+    user_history[user_id].append(f"Video: {video_title}")
 
-        await context.bot.send_document(
-            chat_id=update.effective_chat.id,
-            document=open(video_path, "rb"),
-            caption=f"Your video titled '{video_title}' has been downloaded successfully!",
-        )
-    except Exception as e:
-        logger.error(f"Error while downloading video: {e}")
-        await update.message.reply_text("Sorry, an error occurred while downloading the video.")
+    await context.bot.send_document(
+        chat_id=update.effective_chat.id,
+        document=open(video_path, "rb"),
+        caption=f"Your video titled '{video_title}' has been downloaded successfully!",
+    )
 
 # Download audio
 async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str):
@@ -141,26 +124,22 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, url
         ],
         "quiet": True,
     }
-    try:
-        with YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            audio_title = info.get("title", "audio")
-            audio_path = ydl.prepare_filename(info).replace(".webm", ".mp3")
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        audio_title = info.get("title", "audio")
+        audio_path = ydl.prepare_filename(info).replace(".webm", ".mp3")
 
-        # Save to history
-        user_id = update.effective_user.id
-        if user_id not in user_history:
-            user_history[user_id] = []
-        user_history[user_id].append(f"Audio: {audio_title}")
+    # Save to history
+    user_id = update.effective_user.id
+    if user_id not in user_history:
+        user_history[user_id] = []
+    user_history[user_id].append(f"Audio: {audio_title}")
 
-        await context.bot.send_document(
-            chat_id=update.effective_chat.id,
-            document=open(audio_path, "rb"),
-            caption=f"Your audio titled '{audio_title}' has been downloaded successfully!",
-        )
-    except Exception as e:
-        logger.error(f"Error while downloading audio: {e}")
-        await update.message.reply_text("Sorry, an error occurred while downloading the audio.")
+    await context.bot.send_document(
+        chat_id=update.effective_chat.id,
+        document=open(audio_path, "rb"),
+        caption=f"Your audio titled '{audio_title}' has been downloaded successfully!",
+    )
 
 # Process YouTube link
 async def process_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -177,10 +156,26 @@ async def process_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if user_action == "video_download":
         await update.message.reply_text("🎥 Your video download is now in progress. Please hold on while we process your request.")
-        await download_video(update, context, url)
+        try:
+            await download_video(update, context, url)
+        except Exception as e:
+            logger.error(f"Error downloading video: {e}")
+            await update.message.reply_text("Sorry, an error occurred while downloading the video.")
     elif user_action == "audio_download":
         await update.message.reply_text("🎵 Your audio download is now in progress. Please hold on while we process your request.")
-        await download_audio(update, context, url)
+        try:
+            await download_audio(update, context, url)
+        except Exception as e:
+            logger.error(f"Error downloading audio: {e}")
+            await update.message.reply_text("Sorry, an error occurred while downloading the audio.")
+
+    # Show next steps
+    keyboard = [
+        [InlineKeyboardButton("🆕 New Task", callback_data="new_task")],
+        [InlineKeyboardButton("✅ Done", callback_data="done")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text("What would you like to do next?", reply_markup=reply_markup)
 
 # Callback for buttons
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -193,21 +188,53 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "audio_download":
         await query.edit_message_text("Please share the YouTube link for the audio file you'd like to download.")
         context.user_data["action"] = "audio_download"
+    elif query.data == "new_task":
+        keyboard = [
+            [InlineKeyboardButton("🎥 Video Download", callback_data="video_download")],
+            [InlineKeyboardButton("🎵 Audio Download", callback_data="audio_download")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text("Starting a new task! Choose an option below.", reply_markup=reply_markup)
+    elif query.data == "done":
+        await query.edit_message_text("Thank you for using the bot! 😉\nSee you next time! 👋")
+
+# /new_task command
+async def new_task(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("🎥 Video Download", callback_data="video_download")],
+        [InlineKeyboardButton("🎵 Audio Download", callback_data="audio_download")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_text("Starting a new task! Choose an option below:", reply_markup=reply_markup)
+
+# Unknown command
+async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "Command not recognized. Please use /help to see the list of available commands."
+    )
 
 # Main function
 async def main():
-    app = Application.builder().token(BOT_TOKEN).read_timeout(90).build()
+    app = Application.builder().token(BOT_TOKEN).read_timeout(30).build()
 
     # Handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("history", history))
+    app.add_handler(CommandHandler("new_task", new_task))
     app.add_handler(CommandHandler("video_download", video_download_command))
     app.add_handler(CommandHandler("audio_download", audio_download_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, process_link))
     app.add_handler(CallbackQueryHandler(button_callback))
+    app.add_handler(MessageHandler(filters.COMMAND, unknown_command))
 
+    # Run the bot
+    logger.info("Bot is running...")
     await app.run_polling()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("Bot stopped.")
