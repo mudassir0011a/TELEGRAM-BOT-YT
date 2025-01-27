@@ -10,6 +10,7 @@ from telegram.ext import ContextTypes
 # Initialize logger
 logger = logging.getLogger(__name__)
 
+
 def estimate_file_size(video_url: str, format_id: str) -> float:
     """
     Estimate the file size of the video based on YT-DLP metadata.
@@ -104,6 +105,7 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE, url
             'outtmpl': output_template,
             'quiet': True,
             'force_overwrites': True,
+            'cookiefile': 'youtube_cookies.txt',  # Add cookies file for authentication
         }
 
         with youtube_dl.YoutubeDL(options) as ydl:
@@ -145,7 +147,8 @@ async def convert_to_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, u
                     'preferredquality': '192',
                 },
             ],
-            'ffmpeg_location': '/path/to/ffmpeg'
+            'ffmpeg_location': 'C:\Users\atikm\Downloads\APPLICATIONS\ffmpeg-7.1-essentials_build\bin\ffmpeg.exe',
+            'cookiefile': 'youtube_cookies.txt',  # Add cookies file for authentication
         }
 
         with youtube_dl.YoutubeDL(options) as ydl:
