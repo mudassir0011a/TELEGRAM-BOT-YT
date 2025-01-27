@@ -201,17 +201,24 @@ async def process_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_action == "video_download":
         await update.message.reply_text("🎥 Your video download is now in progress. Please hold on while we process your request.")
         try:
+            # Perform file size check before calling download_video
             await download_video(update, context, url)
         except Exception as e:
             logger.error(f"Error downloading video: {e}")
+            # The specific error message for file size over 50MB should be handled in download_video, so no need to repeat it here
             await update.message.reply_text("Sorry, an error occurred while downloading the video.")
+        
     elif user_action == "audio_download":
         await update.message.reply_text("🎵 Your audio download is now in progress. Please hold on while we process your request.")
         try:
+            # Perform file size check before calling download_audio
             await download_audio(update, context, url)
         except Exception as e:
             logger.error(f"Error downloading audio: {e}")
+            # The specific error message for file size over 50MB should be handled in download_audio, so no need to repeat it here
             await update.message.reply_text("Sorry, an error occurred while downloading the audio.")
+
+
 
     # Show next steps
     keyboard = [
