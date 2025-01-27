@@ -6,18 +6,22 @@ import yt_dlp
 import os
 import nest_asyncio
 
-# Apply async loop patch
-nest_asyncio.apply()
+nest_asyncio.apply()  # Patch the event loop
 
 # Enable logging
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
+    handlers=[
+        logging.FileHandler("bot.log"),  # Logs to a file
+        logging.StreamHandler(),        # Logs to the terminal
+    ],
 )
 
 logger = logging.getLogger(__name__)
 
-# Bot token (Updated with your actual API key)
-BOT_TOKEN = "8077274379:AAFawJIixuMK47T9RpxiMv0TC_FnYLA6LWI"
+# Bot token
+BOT_TOKEN = "8077274379:AAFawJIixuMK47T9RpxiMv0TC_FnYLA6LWI"  # Replace with your BotFather token
 
 # Ensure the downloads folder exists
 if not os.path.exists("downloads"):
@@ -29,6 +33,9 @@ user_history = {}
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = update.effective_user.first_name
+    user_id = update.effective_user.id
+    logger.info(f"INFO - User {user_name} (ID: {user_id}) started the bot.")
+
     keyboard = [
         [InlineKeyboardButton("🎥 Video Download", callback_data="video_download")],
         [InlineKeyboardButton("🎵 Audio Download", callback_data="audio_download")],
@@ -44,6 +51,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # /help command
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_name = update.effective_user.first_name
+    logger.info(f"INFO - User {user_name} invoked the /help command.")
+
     await update.message.reply_text(
         "Here are the available commands:\n"
         "/start - Start the bot and explore options.\n"
@@ -213,7 +223,8 @@ async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Main function
 async def main():
-    app = Application.builder().token(BOT_TOKEN).read_timeout(30).build()
+    logger.info("\nSTARTING THE BOT\n")
+    app = Application.builder().token(BOT_TOKEN).read_timeout(90).build()
 
     # Handlers
     app.add_handler(CommandHandler("start", start))
@@ -226,8 +237,10 @@ async def main():
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_handler(MessageHandler(filters.COMMAND, unknown_command))
 
-    # Run the bot
-    logger.info("Bot is running...")
+    logger.info("\nBOT HAS STARTED\n")
+    logger.info("\nBOT IS RUNNING\n")
+    logger.info("\nWAITING FOR USER INTERACTIONS...\n")
+
     await app.run_polling()
 
 if __name__ == "__main__":

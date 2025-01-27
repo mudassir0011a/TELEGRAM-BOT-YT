@@ -1,6 +1,8 @@
 import os
 import json
 import logging
+import asyncio
+import subprocess
 import yt_dlp as youtube_dl
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -14,22 +16,24 @@ def estimate_file_size(video_url: str, format_id: str) -> float:
     Returns the file size in MB, or -1 if not available.
     """
     try:
-        ydl_opts = {
-            "format": format_id,
-            "quiet": True,
-            "dumpjson": True
-        }
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(video_url, download=False)
-        
+        command = ["yt-dlp", "--dump-json", "--format", format_id, video_url]
+        result = subprocess.run(command, capture_output=True, text=True)
+
+        if result.returncode != 0:
+            logger.error(f"Error fetching metadata: {result.stderr}")
+            return -1
+
+        video_info = json.loads(result.stdout)
+
         # Get the requested format details
-        format_info = next((f for f in info['formats'] if f['format_id'] == format_id), None)
+        format_info = next((f for f in video_info['formats'] if f['format_id'] == format_id), None)
 
         if 'filesize' in format_info:
             return format_info['filesize'] / (1024 ** 2)  # Convert bytes to MB
-        elif 'tbr' in format_info and info.get('duration'):
+        elif 'tbr' in format_info and video_info.get('duration'):
+            # Estimate size using tbr and duration
             tbr = format_info['tbr']  # Bitrate (kbps)
-            duration = info.get('duration', 0)  # Duration in seconds
+            duration = video_info['duration']  # Duration in seconds
             return (tbr * duration * 125) / (1024 ** 2)  # Size in MB
         else:
             return -1
@@ -131,7 +135,6 @@ async def convert_to_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, u
 
         output_template = "downloads/%(title)s.%(ext)s"
         options = {
-                    
             'format': 'bestaudio/best',
             'outtmpl': output_template,
             'quiet': True,
@@ -142,7 +145,6 @@ async def convert_to_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, u
                     'preferredquality': '192',
                 },
             ],
-            'ffmpeg_location': r"C:\Users\atikm\Downloads\APPLICATIONS\ffmpeg-7.1-essentials_build\bin\ffmpeg.exe"  
         }
 
         with youtube_dl.YoutubeDL(options) as ydl:
