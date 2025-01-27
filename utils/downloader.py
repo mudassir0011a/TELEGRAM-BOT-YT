@@ -4,8 +4,6 @@ import logging
 import yt_dlp as youtube_dl
 from telegram import Update
 from telegram.ext import ContextTypes
-import subprocess
-
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -16,24 +14,22 @@ def estimate_file_size(video_url: str, format_id: str) -> float:
     Returns the file size in MB, or -1 if not available.
     """
     try:
-        command = ["yt-dlp", "--dump-json", "--format", format_id, video_url]
-        result = subprocess.run(command, capture_output=True, text=True)
-
-        if result.returncode != 0:
-            logger.error(f"Error fetching metadata: {result.stderr}")
-            return -1
-
-        video_info = json.loads(result.stdout)
-
+        ydl_opts = {
+            "format": format_id,
+            "quiet": True,
+            "dumpjson": True
+        }
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(video_url, download=False)
+        
         # Get the requested format details
-        format_info = next((f for f in video_info['formats'] if f['format_id'] == format_id), None)
+        format_info = next((f for f in info['formats'] if f['format_id'] == format_id), None)
 
         if 'filesize' in format_info:
             return format_info['filesize'] / (1024 ** 2)  # Convert bytes to MB
-        elif 'tbr' in format_info and video_info.get('duration'):
-            # Estimate size using tbr and duration
+        elif 'tbr' in format_info and info.get('duration'):
             tbr = format_info['tbr']  # Bitrate (kbps)
-            duration = video_info.get('duration', 0)  # Duration in seconds
+            duration = info.get('duration', 0)  # Duration in seconds
             return (tbr * duration * 125) / (1024 ** 2)  # Size in MB
         else:
             return -1
