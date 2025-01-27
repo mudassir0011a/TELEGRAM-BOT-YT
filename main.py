@@ -5,6 +5,11 @@ from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQu
 from yt_dlp import YoutubeDL
 import os
 import nest_asyncio
+from dotenv import load_dotenv
+
+load_dotenv()
+BOT_TOKEN = os.getenv("7868580875:AAEejPBpzEIMsSFf2XX8hOoNQ8ehDNA5oT0")
+
 
 # Apply nest_asyncio for async compatibility
 nest_asyncio.apply()
@@ -20,8 +25,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Bot token
-BOT_TOKEN = os.getenv("7868580875:AAEejPBpzEIMsSFf2XX8hOoNQ8ehDNA5oT0")  # Replace with your BotFather token
+# # Bot token
+# BOT_TOKEN = os.getenv("7868580875:AAEejPBpzEIMsSFf2XX8hOoNQ8ehDNA5oT0")  # Replace with your BotFather token
 
 # Ensure the downloads folder exists
 if not os.path.exists("downloads"):
