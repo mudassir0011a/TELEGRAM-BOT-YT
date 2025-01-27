@@ -107,7 +107,6 @@ def is_valid_youtube_url(url: str) -> bool:
     return "youtube.com" in url or "youtu.be" in url
 
 # Download video
-# Download video
 async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str):
     ydl_opts = {
         "format": "best",
@@ -141,6 +140,7 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE, url
         document=open(video_path, "rb"),
         caption=f"Your video titled '{video_title}' has been downloaded successfully!",
     )
+
 
 # Download audio
 async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str):
@@ -184,7 +184,6 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, url
         caption=f"Your audio titled '{audio_title}' has been downloaded successfully!",
     )
 
-
 # Process YouTube link
 async def process_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_action = context.user_data.get("action")  # Retrieve user action
@@ -200,24 +199,13 @@ async def process_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if user_action == "video_download":
         await update.message.reply_text("🎥 Your video download is now in progress. Please hold on while we process your request.")
-        try:
-            # Perform file size check before calling download_video
-            await download_video(update, context, url)
-        except Exception as e:
-            logger.error(f"Error downloading video: {e}")
-            # The specific error message for file size over 50MB should be handled in download_video, so no need to repeat it here
-            await update.message.reply_text("Sorry, an error occurred while downloading the video.")
-        
+        # Perform file size check before calling download_video
+        await download_video(update, context, url)  # No need for try-except here, it's handled in download_video
+
     elif user_action == "audio_download":
         await update.message.reply_text("🎵 Your audio download is now in progress. Please hold on while we process your request.")
-        try:
-            # Perform file size check before calling download_audio
-            await download_audio(update, context, url)
-        except Exception as e:
-            logger.error(f"Error downloading audio: {e}")
-            # The specific error message for file size over 50MB should be handled in download_audio, so no need to repeat it here
-            await update.message.reply_text("Sorry, an error occurred while downloading the audio.")
-
+        # Perform file size check before calling download_audio
+        await download_audio(update, context, url)  # No need for try-except here, it's handled in download_audio
 
 
     # Show next steps
