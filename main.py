@@ -6,7 +6,8 @@ import yt_dlp
 import os
 import nest_asyncio
 
-nest_asyncio.apply()  # Patch the event loop
+# Patch the event loop
+nest_asyncio.apply()
 
 # Enable logging
 logging.basicConfig(
@@ -59,6 +60,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/start - Start the bot and explore options.\n"
         "/help - Get help about the bot.\n"
         "/history - View your download history.\n"
+        "/reset_history - Clear your download history.\n"
         "/video_download - Start downloading videos.\n"
         "/audio_download - Start downloading audio.\n"
         "/new_task - Start a new task.\n\n"
@@ -78,6 +80,16 @@ async def history(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for i, entry in enumerate(history_list, start=1):
             history_text += f"{i}. {entry}\n"
         await update.message.reply_text(history_text)
+
+# /reset_history command
+async def reset_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id  # Get the unique user ID
+    if user_id in user_history:
+        del user_history[user_id]  # Remove the user's history
+        logger.info(f"INFO - User {user_id}'s history has been reset.")
+        await update.message.reply_text("Your download history has been successfully reset. ✅")
+    else:
+        await update.message.reply_text("You don't have any download history to reset. 😅")
 
 # /video_download command
 async def video_download_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -226,13 +238,17 @@ async def main():
     logger.info("\nSTARTING THE BOT\n")
     app = Application.builder().token(BOT_TOKEN).read_timeout(90).build()
 
+    # Set commands in the menu
+    await set_bot_commands(app)
+
     # Handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("history", history))
-    app.add_handler(CommandHandler("new_task", new_task))
+    app.add_handler(CommandHandler("reset_history", reset_history))
     app.add_handler(CommandHandler("video_download", video_download_command))
     app.add_handler(CommandHandler("audio_download", audio_download_command))
+    app.add_handler(CommandHandler("new_task", new_task))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, process_link))
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_handler(MessageHandler(filters.COMMAND, unknown_command))
@@ -242,6 +258,7 @@ async def main():
     logger.info("\nWAITING FOR USER INTERACTIONS...\n")
 
     await app.run_polling()
+
 
 if __name__ == "__main__":
     try:
