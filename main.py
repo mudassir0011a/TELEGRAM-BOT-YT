@@ -5,6 +5,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQu
 import yt_dlp
 import os
 import nest_asyncio
+from telegram import BotCommand
 
 # Patch the event loop
 nest_asyncio.apply()
@@ -60,7 +61,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/start - Start the bot and explore options.\n"
         "/help - Get help about the bot.\n"
         "/history - View your download history.\n"
-        "/reset_history - Clear your download history.\n"
+        "/reset_history - Clear's your download history.\n"
         "/video_download - Start downloading videos.\n"
         "/audio_download - Start downloading audio.\n"
         "/new_task - Start a new task.\n\n"
@@ -106,6 +107,7 @@ def is_valid_youtube_url(url: str) -> bool:
     return "youtube.com" in url or "youtu.be" in url
 
 # Download video
+# Download video
 async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str):
     ydl_opts = {
         "format": "best",
@@ -116,6 +118,17 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE, url
         info = ydl.extract_info(url, download=True)
         video_title = info.get("title", "video")
         video_path = ydl.prepare_filename(info)
+
+    # Check file size
+    file_size = os.path.getsize(video_path)
+    if file_size > 50 * 1024 * 1024:  # 50 MB limit
+        logger.info(f"File size: {file_size / (1024 * 1024):.2f} MB")
+        os.remove(video_path)  # Delete the file to save space
+        await update.message.reply_text(
+            "We're unfortunately sorry 😔, but the video file size exceeds 50 MB, which cannot be sent on Telegram. "
+            "Please try a smaller video or use a different tool."
+        )
+        return
 
     # Save to history
     user_id = update.effective_user.id
@@ -148,6 +161,17 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, url
         audio_title = info.get("title", "audio")
         audio_path = ydl.prepare_filename(info).replace(".webm", ".mp3")
 
+    # Check file size
+    file_size = os.path.getsize(audio_path)
+    if file_size > 50 * 1024 * 1024:  # 50 MB limit
+        logger.info(f"File size: {file_size / (1024 * 1024):.2f} MB")
+        os.remove(audio_path)  # Delete the file to save space
+        await update.message.reply_text(
+            "We're unfortunately sorry 😔, but the audio file size exceeds 50 MB, which cannot be sent on Telegram. "
+            "Please try a smaller audio file or use a different tool."
+        )
+        return
+
     # Save to history
     user_id = update.effective_user.id
     if user_id not in user_history:
@@ -159,6 +183,7 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, url
         document=open(audio_path, "rb"),
         caption=f"Your audio titled '{audio_title}' has been downloaded successfully!",
     )
+
 
 # Process YouTube link
 async def process_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -195,6 +220,18 @@ async def process_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text("What would you like to do next?", reply_markup=reply_markup)
+
+# /reset_history command
+async def reset_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id  # Get user ID
+    
+    # Check if user has any history
+    if user_id not in user_history or not user_history[user_id]:
+        await update.message.reply_text("You don't have any download history to reset. 😅")
+    else:
+        # Clear the user's history
+        user_history[user_id] = []
+        await update.message.reply_text("Your download history has been successfully cleared! ✅")
 
 # Callback for buttons
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -233,6 +270,19 @@ async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Command not recognized. Please use /help to see the list of available commands."
     )
 
+# Set up bot commands for the menu
+async def set_bot_commands(application):
+    commands = [
+        BotCommand("start", "Start the bot"),
+        BotCommand("help", "Get help about the bot"),
+        BotCommand("history", "View your download history"),
+        BotCommand("reset_history", "Clear's your download history"),
+        BotCommand("video_download", "Download a video"),
+        BotCommand("audio_download", "Download an audio file"),
+        BotCommand("new_task", "Start a new task"),
+    ]
+    await application.bot.set_my_commands(commands)
+
 # Main function
 async def main():
     logger.info("\nSTARTING THE BOT\n")
@@ -245,7 +295,7 @@ async def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("history", history))
-    app.add_handler(CommandHandler("reset_history", reset_history))
+    app.add_handler(CommandHandler("reset_history", reset_history))  # Make sure this handler exists
     app.add_handler(CommandHandler("video_download", video_download_command))
     app.add_handler(CommandHandler("audio_download", audio_download_command))
     app.add_handler(CommandHandler("new_task", new_task))
@@ -258,6 +308,7 @@ async def main():
     logger.info("\nWAITING FOR USER INTERACTIONS...\n")
 
     await app.run_polling()
+
 
 
 if __name__ == "__main__":
