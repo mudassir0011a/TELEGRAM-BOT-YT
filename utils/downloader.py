@@ -145,6 +145,7 @@ async def convert_to_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, u
                     'preferredquality': '192',
                 },
             ],
+            'ffmpeg_location': '/path/to/ffmpeg'
         }
 
         with youtube_dl.YoutubeDL(options) as ydl:
