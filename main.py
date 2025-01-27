@@ -322,7 +322,7 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
-        logger.info("Bot stopped.")
+        logger.info("Bot stopped...")
 
 
-#UPDATED 07 
+#UPDATED 07
