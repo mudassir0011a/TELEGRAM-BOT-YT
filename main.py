@@ -25,7 +25,7 @@ BOT_TOKEN = os.getenv("7868580875:AAEejPBpzEIMsSFf2XX8hOoNQ8ehDNA5oT0")  # Repla
 
 # Ensure the downloads folder exists
 if not os.path.exists("downloads"):
-    os.makedirs("downloads")
+    os.makedirs("downloads", exist_ok=True)  # Ensures no errors
 
 # Dictionary to store user-specific download history
 user_history = {}
@@ -99,6 +99,7 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE, url
         "format": "best",
         "outtmpl": "downloads/%(title)s.%(ext)s",
         "quiet": True,
+        "max_filesize": 50 * 1024 * 1024,  # 50 MB limit
     }
     try:
         with YoutubeDL(ydl_opts) as ydl:
