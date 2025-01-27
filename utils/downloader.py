@@ -1,8 +1,6 @@
 import os
 import json
 import logging
-import asyncio
-import subprocess
 import yt_dlp as youtube_dl
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -33,7 +31,7 @@ def estimate_file_size(video_url: str, format_id: str) -> float:
         elif 'tbr' in format_info and video_info.get('duration'):
             # Estimate size using tbr and duration
             tbr = format_info['tbr']  # Bitrate (kbps)
-            duration = video_info['duration']  # Duration in seconds
+            duration = video_info.get('duration', 0)  # Duration in seconds
             return (tbr * duration * 125) / (1024 ** 2)  # Size in MB
         else:
             return -1

@@ -6,21 +6,18 @@ import yt_dlp
 import os
 import nest_asyncio
 
-nest_asyncio.apply()  # Patch the event loop
+# Apply async loop patch
+nest_asyncio.apply()
 
 # Enable logging
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.WARNING
-)
-
 logger = logging.getLogger(__name__)
 
-# Bot token
-BOT_TOKEN = "8077274379:AAFawJIixuMK47T9RpxiMv0TC_FnYLA6LWI"  # Replace with your BotFather token
+# Bot token (Updated with your actual API key)
+BOT_TOKEN = "8077274379:AAFawJIixuMK47T9RpxiMv0TC_FnYLA6LWI"
 
 # Ensure the downloads folder exists
 if not os.path.exists("downloads"):
