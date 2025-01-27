@@ -131,6 +131,7 @@ async def convert_to_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, u
 
         output_template = "downloads/%(title)s.%(ext)s"
         options = {
+                    
             'format': 'bestaudio/best',
             'outtmpl': output_template,
             'quiet': True,
@@ -141,6 +142,7 @@ async def convert_to_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, u
                     'preferredquality': '192',
                 },
             ],
+            'ffmpeg_location': r"C:\Users\atikm\Downloads\APPLICATIONS\ffmpeg-7.1-essentials_build\bin\ffmpeg.exe"  
         }
 
         with youtube_dl.YoutubeDL(options) as ydl:
