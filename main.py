@@ -320,10 +320,18 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "video_download":
         context.user_data["action"] = "video_download"
-        await query.edit_message_text("🎥 Video Download selected. Please share the YouTube link for the video you wish to download.")
+        await query.edit_message_text("🎥 Video Download selected. Processing your request...")
+        if "url" in context.user_data:
+            await handle_download(update, context)
+        else:
+            await query.edit_message_text("🎥 Video Download selected. Please share the YouTube link for the video you wish to download.")
     elif query.data == "audio_download":
         context.user_data["action"] = "audio_download"
-        await query.edit_message_text("🎵 Audio Download selected. Please share the YouTube link for the audio file you'd like to download.")
+        await query.edit_message_text("🎵 Audio Download selected. Processing your request...")
+        if "url" in context.user_data:
+            await handle_download(update, context)
+        else:
+            await query.edit_message_text("🎵 Audio Download selected. Please share the YouTube link for the audio file you'd like to download.")
     elif query.data == "new_task":
         keyboard = [
             [InlineKeyboardButton("🎥 Video Download", callback_data="video_download")],
