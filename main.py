@@ -38,6 +38,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     logger.info(f"INFO - User {user_name} (ID: {user_id}) started the bot.")
 
+    # Clear the "done" state
+    if "done" in context.user_data:
+        context.user_data.pop("done")
+
     keyboard = [
         [InlineKeyboardButton("🎥 Video Download", callback_data="video_download")],
         [InlineKeyboardButton("🎵 Audio Download", callback_data="audio_download")],
@@ -53,6 +57,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # /help command
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Check if the bot is in "done" state
+    if "done" in context.user_data:
+        await update.message.reply_text(
+            "Please /start the bot to continue with your task."
+        )
+        return
+
     user_name = update.effective_user.first_name
     logger.info(f"INFO - User {user_name} invoked the /help command.")
 
@@ -64,12 +75,20 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/reset_history - Clear's your download history.\n"
         "/video_download - Start downloading videos.\n"
         "/audio_download - Start downloading audio.\n"
-        "/new_task - Start a new task.\n\n"
+        "/new_task - Start a new task.\n"
+        "/done - Finish using the bot.\n\n"
         "Click on the buttons to download video or audio. Enjoy!"
     )
 
 # /history command
 async def history(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Check if the bot is in "done" state
+    if "done" in context.user_data:
+        await update.message.reply_text(
+            "Please /start the bot to continue with your task."
+        )
+        return
+
     user_id = update.effective_user.id  # Get the unique user ID
     history_list = user_history.get(user_id, [])  # Fetch the user's history or an empty list
 
@@ -84,6 +103,13 @@ async def history(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # /reset_history command
 async def reset_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Check if the bot is in "done" state
+    if "done" in context.user_data:
+        await update.message.reply_text(
+            "Please /start the bot to continue with your task."
+        )
+        return
+
     user_id = update.effective_user.id  # Get the unique user ID
     if user_id in user_history:
         del user_history[user_id]  # Remove the user's history
@@ -94,13 +120,38 @@ async def reset_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # /video_download command
 async def video_download_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Check if the bot is in "done" state
+    if "done" in context.user_data:
+        await update.message.reply_text(
+            "Please /start the bot to continue with your task."
+        )
+        return
+
     context.user_data["action"] = "video_download"
     await update.message.reply_text("Kindly provide the YouTube link for the video you wish to download.")
 
 # /audio_download command
 async def audio_download_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Check if the bot is in "done" state
+    if "done" in context.user_data:
+        await update.message.reply_text(
+            "Please /start the bot to continue with your task."
+        )
+        return
+
     context.user_data["action"] = "audio_download"
     await update.message.reply_text("Please share the YouTube link for the audio file you'd like to download.")
+
+# /done command
+async def done_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_name = update.effective_user.first_name
+    await update.message.reply_text(
+        f"Thank you for using the bot, {user_name}! 😊\n"
+        "If you need anything else, feel free to start again with /start.\n"
+        "Have a great day! 👋"
+    )
+    # Mark the bot as "done"
+    context.user_data["done"] = True
 
 # Validate YouTube URL
 def is_valid_youtube_url(url: str) -> bool:
@@ -123,9 +174,10 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE, url
     if file_size > 50 * 1024 * 1024:  # 50 MB limit
         logger.info(f"File size: {file_size / (1024 * 1024):.2f} MB")
         os.remove(video_path)  # Delete the file to save space
-        await update.message.reply_text(
-            "We're unfortunately sorry 😔, but the video file size exceeds 50 MB, which cannot be sent on Telegram. "
-            "Please try a smaller video or use a different tool."
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="We're unfortunately sorry 😔, but the video file size exceeds 50 MB, which cannot be sent on Telegram. "
+                 "Please try a smaller video or use a different tool."
         )
         return
 
@@ -166,9 +218,10 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, url
     if file_size > 50 * 1024 * 1024:  # 50 MB limit
         logger.info(f"File size: {file_size / (1024 * 1024):.2f} MB")
         os.remove(audio_path)  # Delete the file to save space
-        await update.message.reply_text(
-            "We're unfortunately sorry 😔, but the audio file size exceeds 50 MB, which cannot be sent on Telegram. "
-            "Please try a smaller audio file or use a different tool."
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="We're unfortunately sorry 😔, but the audio file size exceeds 50 MB, which cannot be sent on Telegram. "
+                 "Please try a smaller audio file or use a different tool."
         )
         return
 
@@ -186,27 +239,67 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, url
 
 # Process YouTube link
 async def process_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_action = context.user_data.get("action")  # Retrieve user action
-    url = update.message.text
-
-    if not user_action:
-        await update.message.reply_text("Please choose an option first: Video or Audio Download.")
+    # Check if the bot is in "done" state
+    if "done" in context.user_data:
+        await update.message.reply_text(
+            "Please /start the bot to continue with your task."
+        )
         return
+
+    url = update.message.text
 
     if not is_valid_youtube_url(url):
         await update.message.reply_text("The link you provided is invalid. Please send a valid YouTube URL.")
         return
 
+    # Store the link in user_data
+    context.user_data["url"] = url
+
+    # If no action is selected, prompt the user to choose an option
+    if "action" not in context.user_data:
+        keyboard = [
+            [InlineKeyboardButton("🎥 Video Download", callback_data="video_download")],
+            [InlineKeyboardButton("🎵 Audio Download", callback_data="audio_download")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(
+            "Please select an option to proceed:",
+            reply_markup=reply_markup,
+        )
+        return
+
+    # If action is already selected, process the link directly
+    await handle_download(update, context)
+
+# Handle download based on user action
+async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_action = context.user_data.get("action")
+    url = context.user_data.get("url")
+
+    if not url:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Please provide a valid YouTube link."
+        )
+        return
+
     if user_action == "video_download":
-        await update.message.reply_text("🎥 Your video download is now in progress. Please hold on while we process your request.")
-        # Perform file size check before calling download_video
-        await download_video(update, context, url)  # No need for try-except here, it's handled in download_video
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="🎥 Your video download is now in progress. Please hold on while we process your request."
+        )
+        await download_video(update, context, url)
 
     elif user_action == "audio_download":
-        await update.message.reply_text("🎵 Your audio download is now in progress. Please hold on while we process your request.")
-        # Perform file size check before calling download_audio
-        await download_audio(update, context, url)  # No need for try-except here, it's handled in download_audio
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="🎵 Your audio download is now in progress. Please hold on while we process your request."
+        )
+        await download_audio(update, context, url)
 
+    # Clear the URL and action after processing
+    context.user_data.pop("url", None)
+    context.user_data.pop("action", None)
 
     # Show next steps
     keyboard = [
@@ -214,19 +307,11 @@ async def process_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("✅ Done", callback_data="done")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("What would you like to do next?", reply_markup=reply_markup)
-
-# /reset_history command
-async def reset_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id  # Get user ID
-    
-    # Check if user has any history
-    if user_id not in user_history or not user_history[user_id]:
-        await update.message.reply_text("You don't have any download history to reset. 😅")
-    else:
-        # Clear the user's history
-        user_history[user_id] = []
-        await update.message.reply_text("Your download history has been successfully cleared! ✅")
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="What would you like to do next?",
+        reply_markup=reply_markup,
+    )
 
 # Callback for buttons
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -234,11 +319,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     if query.data == "video_download":
-        await query.edit_message_text("Kindly provide the YouTube link for the video you wish to download.")
         context.user_data["action"] = "video_download"
+        await query.edit_message_text("🎥 Video Download selected. Please share the YouTube link for the video you wish to download.")
     elif query.data == "audio_download":
-        await query.edit_message_text("Please share the YouTube link for the audio file you'd like to download.")
         context.user_data["action"] = "audio_download"
+        await query.edit_message_text("🎵 Audio Download selected. Please share the YouTube link for the audio file you'd like to download.")
     elif query.data == "new_task":
         keyboard = [
             [InlineKeyboardButton("🎥 Video Download", callback_data="video_download")],
@@ -248,9 +333,18 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("Starting a new task! Choose an option below.", reply_markup=reply_markup)
     elif query.data == "done":
         await query.edit_message_text("Thank you for using the bot! 😉\nSee you next time! 👋")
+        # Mark the bot as "done"
+        context.user_data["done"] = True
 
 # /new_task command
 async def new_task(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Check if the bot is in "done" state
+    if "done" in context.user_data:
+        await update.message.reply_text(
+            "Please /start the bot to continue with your task."
+        )
+        return
+
     keyboard = [
         [InlineKeyboardButton("🎥 Video Download", callback_data="video_download")],
         [InlineKeyboardButton("🎵 Audio Download", callback_data="audio_download")],
@@ -261,6 +355,13 @@ async def new_task(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Unknown command
 async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Check if the bot is in "done" state
+    if "done" in context.user_data:
+        await update.message.reply_text(
+            "Please /start the bot to continue with your task."
+        )
+        return
+
     await update.message.reply_text(
         "Command not recognized. Please use /help to see the list of available commands."
     )
@@ -275,6 +376,7 @@ async def set_bot_commands(application):
         BotCommand("video_download", "Download a video"),
         BotCommand("audio_download", "Download an audio file"),
         BotCommand("new_task", "Start a new task"),
+        BotCommand("done", "Finish using the bot"),
     ]
     await application.bot.set_my_commands(commands)
 
@@ -290,10 +392,11 @@ async def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("history", history))
-    app.add_handler(CommandHandler("reset_history", reset_history))  # Make sure this handler exists
+    app.add_handler(CommandHandler("reset_history", reset_history))
     app.add_handler(CommandHandler("video_download", video_download_command))
     app.add_handler(CommandHandler("audio_download", audio_download_command))
     app.add_handler(CommandHandler("new_task", new_task))
+    app.add_handler(CommandHandler("done", done_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, process_link))
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_handler(MessageHandler(filters.COMMAND, unknown_command))
@@ -304,13 +407,8 @@ async def main():
 
     await app.run_polling()
 
-
-
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         logger.info("Bot stopped...")
-
-
-#UPDATED 07
