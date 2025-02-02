@@ -163,11 +163,18 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE, url
         "format": "best",
         "outtmpl": "downloads/%(title)s.%(ext)s",
         "quiet": True,
+        "cookiefile": "youtube_cookies.txt",  # Relative path to the cookies file
     }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        video_title = info.get("title", "video")
-        video_path = ydl.prepare_filename(info)
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            video_title = info.get("title", "video")
+            video_path = ydl.prepare_filename(info)
+            return video_title, video_path
+    except Exception as e:
+        print(f"Error downloading video: {e}")
+        return None, None
+
 
     # Check file size
     file_size = os.path.getsize(video_path)
