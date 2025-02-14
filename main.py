@@ -210,34 +210,41 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, url
         "quiet": True,
         "cookiefile": "C:/Users/atikm/Desktop/PROJECT/YTDOWNLOADER/cookies.txt",  # Updated path
     }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        audio_title = info.get("title", "audio")
-        audio_path = ydl.prepare_filename(info).replace(".webm", ".mp3")
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            audio_title = info.get("title", "audio")
+            audio_path = ydl.prepare_filename(info).replace(".webm", ".mp3")
 
-    # Check file size
-    file_size = os.path.getsize(audio_path)
-    if file_size > 50 * 1024 * 1024:  # 50 MB limit
-        logger.info(f"File size: {file_size / (1024 * 1024):.2f} MB")
-        os.remove(audio_path)  # Delete the file to save space
+        # Check file size
+        file_size = os.path.getsize(audio_path)
+        if file_size > 50 * 1024 * 1024:  # 50 MB limit
+            logger.info(f"File size: {file_size / (1024 * 1024):.2f} MB")
+            os.remove(audio_path)  # Delete the file to save space
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text="We're unfortunately sorry 😔, but the audio file size exceeds 50 MB, which cannot be sent on Telegram. "
+                     "Please try a smaller audio file or use a different tool."
+            )
+            return
+
+        # Save to history
+        user_id = update.effective_user.id
+        if user_id not in user_history:
+            user_history[user_id] = []
+        user_history[user_id].append(f"Audio: {audio_title}")
+
+        await context.bot.send_document(
+            chat_id=update.effective_chat.id,
+            document=open(audio_path, "rb"),
+            caption=f"Your audio titled '{audio_title}' has been downloaded successfully!",
+        )
+    except yt_dlp.utils.DownloadError as e:
+        logger.error(f"Download error: {e}")
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text="We're unfortunately sorry 😔, but the audio file size exceeds 50 MB, which cannot be sent on Telegram. "
-                 "Please try a smaller audio file or use a different tool."
+            text="Failed to download the audio. Please try again later or check the link."
         )
-        return
-
-    # Save to history
-    user_id = update.effective_user.id
-    if user_id not in user_history:
-        user_history[user_id] = []
-    user_history[user_id].append(f"Audio: {audio_title}")
-
-    await context.bot.send_document(
-        chat_id=update.effective_chat.id,
-        document=open(audio_path, "rb"),
-        caption=f"Your audio titled '{audio_title}' has been downloaded successfully!",
-    )
 
 # Process YouTube link
 async def process_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -404,7 +411,7 @@ async def main():
     app.add_handler(CommandHandler("history", history))
     app.add_handler(CommandHandler("reset_history", reset_history))
     app.add_handler(CommandHandler("video_download", video_download_command))
-    app.add_handler(CommandHandler("audio_download", audio_download_command))
+    app.add_handler(CommandHandler("audio_download", audio_download_command))  # Fixed parenthesis
     app.add_handler(CommandHandler("new_task", new_task))
     app.add_handler(CommandHandler("done", done_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, process_link))
