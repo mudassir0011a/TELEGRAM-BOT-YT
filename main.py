@@ -163,6 +163,7 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE, url
         "format": "best",
         "outtmpl": "downloads/%(title)s.%(ext)s",
         "quiet": True,
+        "cookiefile": "cookies.txt",  # Add this line
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
@@ -207,6 +208,7 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, url
             }
         ],
         "quiet": True,
+        "cookiefile": "cookies.txt",  # Add this line
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
@@ -421,5 +423,5 @@ if __name__ == "__main__":
     except (KeyboardInterrupt, SystemExit):
         logger.info("Bot stopped...")
 
-
-        # UPDATED 9.2.2.2025
+        # update date month version
+        # UPDATED 9.14.2.1.2025
