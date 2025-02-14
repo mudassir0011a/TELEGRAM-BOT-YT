@@ -163,7 +163,7 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE, url
         "format": "best",
         "outtmpl": "downloads/%(title)s.%(ext)s",
         "quiet": True,
-        "cookiefile": "cookies.txt",  # Add this line
+        "cookiefile": "C:/Users/atikm/Desktop/PROJECT/YTDOWNLOADER/cookies.txt",  # Updated path
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
@@ -208,7 +208,7 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, url
             }
         ],
         "quiet": True,
-        "cookiefile": "cookies.txt",  # Add this line
+        "cookiefile": "C:/Users/atikm/Desktop/PROJECT/YTDOWNLOADER/cookies.txt",  # Updated path
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
