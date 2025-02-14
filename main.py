@@ -32,6 +32,14 @@ if not os.path.exists("downloads"):
 # Dictionary to store user-specific download history
 user_history = {}
 
+# Path to cookies.txt
+COOKIES_PATH = "C:/Users/atikm/Desktop/PROJECT/YTDOWNLOADER/cookies.txt"
+
+# Check if cookies.txt exists
+if not os.path.exists(COOKIES_PATH):
+    logger.error(f"Cookies file not found at: {COOKIES_PATH}")
+    raise FileNotFoundError(f"Cookies file not found at: {COOKIES_PATH}")
+
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = update.effective_user.first_name
@@ -163,37 +171,43 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE, url
         "format": "best",
         "outtmpl": "downloads/%(title)s.%(ext)s",
         "quiet": True,
-        "cookiefile": "C:/Users/atikm/Desktop/PROJECT/YTDOWNLOADER/cookies.txt",  # Updated path
+        "cookiefile": COOKIES_PATH,  # Use the cookies file
     }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        video_title = info.get("title", "video")
-        video_path = ydl.prepare_filename(info)
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            video_title = info.get("title", "video")
+            video_path = ydl.prepare_filename(info)
 
-    # Check file size
-    file_size = os.path.getsize(video_path)
-    if file_size > 50 * 1024 * 1024:  # 50 MB limit
-        logger.info(f"File size: {file_size / (1024 * 1024):.2f} MB")
-        os.remove(video_path)  # Delete the file to save space
+        # Check file size
+        file_size = os.path.getsize(video_path)
+        if file_size > 50 * 1024 * 1024:  # 50 MB limit
+            logger.info(f"File size: {file_size / (1024 * 1024):.2f} MB")
+            os.remove(video_path)  # Delete the file to save space
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text="We're unfortunately sorry 😔, but the video file size exceeds 50 MB, which cannot be sent on Telegram. "
+                     "Please try a smaller video or use a different tool."
+            )
+            return
+
+        # Save to history
+        user_id = update.effective_user.id
+        if user_id not in user_history:
+            user_history[user_id] = []
+        user_history[user_id].append(f"Video: {video_title}")
+
+        await context.bot.send_document(
+            chat_id=update.effective_chat.id,
+            document=open(video_path, "rb"),
+            caption=f"Your video titled '{video_title}' has been downloaded successfully!",
+        )
+    except yt_dlp.utils.DownloadError as e:
+        logger.error(f"Download error: {e}")
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text="We're unfortunately sorry 😔, but the video file size exceeds 50 MB, which cannot be sent on Telegram. "
-                 "Please try a smaller video or use a different tool."
+            text="Failed to download the video. Please try again later or check the link."
         )
-        return
-
-    # Save to history
-    user_id = update.effective_user.id
-    if user_id not in user_history:
-        user_history[user_id] = []
-    user_history[user_id].append(f"Video: {video_title}")
-
-    await context.bot.send_document(
-        chat_id=update.effective_chat.id,
-        document=open(video_path, "rb"),
-        caption=f"Your video titled '{video_title}' has been downloaded successfully!",
-    )
-
 
 # Download audio
 async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str):
@@ -208,7 +222,7 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, url
             }
         ],
         "quiet": True,
-        "cookiefile": "C:/Users/atikm/Desktop/PROJECT/YTDOWNLOADER/cookies.txt",  # Updated path
+        "cookiefile": COOKIES_PATH,  # Use the cookies file
     }
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -411,7 +425,7 @@ async def main():
     app.add_handler(CommandHandler("history", history))
     app.add_handler(CommandHandler("reset_history", reset_history))
     app.add_handler(CommandHandler("video_download", video_download_command))
-    app.add_handler(CommandHandler("audio_download", audio_download_command))  # Fixed parenthesis
+    app.add_handler(CommandHandler("audio_download", audio_download_command))
     app.add_handler(CommandHandler("new_task", new_task))
     app.add_handler(CommandHandler("done", done_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, process_link))
@@ -429,6 +443,6 @@ if __name__ == "__main__":
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         logger.info("Bot stopped...")
-
+        
         # update date month version
         # UPDATED 9.14.2.1.2025
