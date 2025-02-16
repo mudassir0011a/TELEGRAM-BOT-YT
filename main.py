@@ -33,7 +33,7 @@ if not os.path.exists("downloads"):
 user_history = {}
 
 # Path to cookies.txt
-COOKIES_PATH = "C:/Users/atikm/Desktop/PROJECT/YTDOWNLOADER/cookies.txt"
+COOKIES_PATH = "C:/Users/atikm/Desktop/PROJECT/YTDOWNLOADER/cookies_netscape.txt"
 
 # Check if cookies.txt exists and warn if not
 if not os.path.exists(COOKIES_PATH):
