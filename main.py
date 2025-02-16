@@ -35,10 +35,12 @@ user_history = {}
 # Path to cookies.txt
 COOKIES_PATH = "C:/Users/atikm/Desktop/PROJECT/YTDOWNLOADER/cookies.txt"
 
-# Check if cookies.txt exists
+# Check if cookies.txt exists and warn if not
 if not os.path.exists(COOKIES_PATH):
-    logger.error(f"Cookies file not found at: {COOKIES_PATH}")
-    raise FileNotFoundError(f"Cookies file not found at: {COOKIES_PATH}")
+    logger.warning(f"Cookies file not found at: {COOKIES_PATH}. The download may fail if cookies are required.")
+    # Optionally, create an empty cookies file or proceed without raising an error
+    # with open(COOKIES_PATH, "w") as f:
+    #     f.write("")  # create an empty cookies file
 
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -445,4 +447,4 @@ if __name__ == "__main__":
         logger.info("Bot stopped...")
         
         # update date month version
-        # UPDATED 9.14.2.1.2025
+        # UPDATED 9.17.2.2.2025
