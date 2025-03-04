@@ -1,7 +1,6 @@
 import os
 import json
 import logging
-import asyncio
 import subprocess
 import yt_dlp as youtube_dl
 from telegram import Update
@@ -10,6 +9,9 @@ from telegram.ext import ContextTypes
 # Initialize logger
 logger = logging.getLogger(__name__)
 
+# Format constants
+VIDEO_FORMAT = "best"
+AUDIO_FORMAT = "bestaudio/best"
 
 def estimate_file_size(video_url: str, format_id: str) -> float:
     """
@@ -25,14 +27,11 @@ def estimate_file_size(video_url: str, format_id: str) -> float:
             return -1
 
         video_info = json.loads(result.stdout)
-
-        # Get the requested format details
         format_info = next((f for f in video_info['formats'] if f['format_id'] == format_id), None)
 
         if 'filesize' in format_info:
             return format_info['filesize'] / (1024 ** 2)  # Convert bytes to MB
         elif 'tbr' in format_info and video_info.get('duration'):
-            # Estimate size using tbr and duration
             tbr = format_info['tbr']  # Bitrate (kbps)
             duration = video_info['duration']  # Duration in seconds
             return (tbr * duration * 125) / (1024 ** 2)  # Size in MB
@@ -60,8 +59,7 @@ async def process_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         logger.info(f"Processing link: {url} for action: {user_action}")
 
-        # Estimate file size using yt-dlp
-        format_id = "18"  # Default video format
+        format_id = VIDEO_FORMAT if user_action == "download_video" else AUDIO_FORMAT
         estimated_size = estimate_file_size(url, format_id)
 
         if estimated_size != -1:
@@ -69,9 +67,8 @@ async def process_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await update.message.reply_text("Unable to estimate file size. Proceeding with download...")
 
-        # Execute user action
         if user_action == "download_video":
-            await download_video_async(url, format_id, update, context)
+            await download_video(update, context, url)
         elif user_action == "convert_audio":
             await convert_to_audio(update, context, url)
         else:
@@ -81,38 +78,27 @@ async def process_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"An error occurred: {e}")
 
 
-async def download_video_async(video_url, format_id, update, context):
-    """
-    Asynchronous wrapper to download a video.
-    """
-    try:
-        await download_video(update, context, video_url)
-    except Exception as e:
-        logger.error(f"Error in download_video_async: {e}")
-        await update.message.reply_text(f"An error occurred during asynchronous video download: {e}")
-
-
 async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str):
     """
     Downloads the video using yt-dlp and sends it to the user.
     """
     try:
+        if not os.path.exists('downloads'):
+            os.makedirs('downloads')
+
         await update.message.reply_text("Downloading video. Please wait...")
 
-        output_template = "downloads/%(title)s.%(ext)s"
         options = {
-            'format': 'best',
-            'outtmpl': output_template,
+            'format': VIDEO_FORMAT,
+            'outtmpl': "downloads/%(title)s.%(ext)s",
             'quiet': True,
             'force_overwrites': True,
-            'cookiefile': 'youtube_cookies.txt',  # Add cookies file for authentication
         }
 
         with youtube_dl.YoutubeDL(options) as ydl:
             info = ydl.extract_info(url, download=True)
             file_path = ydl.prepare_filename(info)
 
-        # Get file size
         file_size = os.path.getsize(file_path) / (1024 ** 2)
 
         if file_size > 50:
@@ -122,7 +108,7 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE, url
         else:
             with open(file_path, "rb") as video_file:
                 await update.message.reply_video(video_file)
-            await update.message.reply_text(f"Video sent successfully! File size: {file_size:.2f} MB.")
+            os.remove(file_path)  # Clean up after sending the file
     except Exception as e:
         logger.error(f"Error downloading video: {e}")
         await update.message.reply_text(f"An error occurred while downloading video: {e}")
@@ -133,12 +119,14 @@ async def convert_to_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, u
     Converts a YouTube video to audio and sends it to the user.
     """
     try:
+        if not os.path.exists('downloads'):
+            os.makedirs('downloads')
+
         await update.message.reply_text("Converting video to audio. Please wait...")
 
-        output_template = "downloads/%(title)s.%(ext)s"
         options = {
-            'format': 'bestaudio/best',
-            'outtmpl': output_template,
+            'format': AUDIO_FORMAT,
+            'outtmpl': "downloads/%(title)s.%(ext)s",
             'quiet': True,
             'postprocessors': [
                 {
@@ -147,15 +135,13 @@ async def convert_to_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, u
                     'preferredquality': '192',
                 },
             ],
-            'ffmpeg_location': 'C:\Users\atikm\Downloads\APPLICATIONS\ffmpeg-7.1-essentials_build\bin\ffmpeg.exe',
-            'cookiefile': 'youtube_cookies.txt',  # Add cookies file for authentication
+            'ffmpeg_location': os.getenv('FFMPEG_PATH', 'ffmpeg'),
         }
 
         with youtube_dl.YoutubeDL(options) as ydl:
             info = ydl.extract_info(url, download=True)
             file_path = ydl.prepare_filename(info).replace(".webm", ".mp3")
 
-        # Get file size
         file_size = os.path.getsize(file_path) / (1024 ** 2)
 
         if file_size > 50:
@@ -165,7 +151,7 @@ async def convert_to_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, u
         else:
             with open(file_path, "rb") as audio_file:
                 await update.message.reply_audio(audio_file)
-            await update.message.reply_text(f"Audio sent successfully! File size: {file_size:.2f} MB.")
+            os.remove(file_path)  # Clean up after sending the file
     except Exception as e:
         logger.error(f"Error converting to audio: {e}")
         await update.message.reply_text(f"An error occurred while converting audio: {e}")

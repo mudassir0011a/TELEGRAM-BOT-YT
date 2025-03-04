@@ -32,29 +32,6 @@ if not os.path.exists("downloads"):
 # Dictionary to store user-specific download history
 user_history = {}
 
-# Path to cookies.txt
-COOKIES_PATH = "cookies_netscape.txt"
-
-# Validate the cookies file
-def validate_cookies_file(file_path):
-    try:
-        with open(file_path, "r") as f:
-            lines = f.readlines()
-            if not lines:
-                logger.warning("Cookies file is empty.")
-                return False
-            # Check if the file follows Netscape format
-            for line in lines:
-                if line.strip() and not line.startswith("#"):
-                    parts = line.strip().split("\t")
-                    if len(parts) != 7:
-                        logger.error(f"Invalid cookies file format: {line}")
-                        return False
-        return True
-    except Exception as e:
-        logger.error(f"Error validating cookies file: {e}")
-        return False
-
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = update.effective_user.first_name
@@ -188,11 +165,6 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE, url
         "quiet": True,
     }
 
-    if validate_cookies_file(COOKIES_PATH):
-        ydl_opts["cookiefile"] = os.path.abspath(COOKIES_PATH)
-    else:
-        logger.warning("Proceeding without cookies.")
-
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
@@ -249,11 +221,6 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, url
         ],
         "quiet": True,
     }
-
-    if validate_cookies_file(COOKIES_PATH):
-        ydl_opts["cookiefile"] = os.path.abspath(COOKIES_PATH)
-    else:
-        logger.warning("Proceeding without cookies.")
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -481,5 +448,5 @@ if __name__ == "__main__":
     except (KeyboardInterrupt, SystemExit):
         logger.info("Bot stopped...")
         
-        # update date month version
-        # UPDATED 10.2.3.3.2025
+        # update date month version 
+        # UPDATED 10.4.3.1.2025
