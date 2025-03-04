@@ -32,29 +32,6 @@ if not os.path.exists("downloads"):
 # Dictionary to store user-specific download history
 user_history = {}
 
-# Path to cookies.txt
-COOKIES_PATH = "cookies_netscape.txt"
-
-# Validate the cookies file
-def validate_cookies_file(file_path):
-    try:
-        with open(file_path, "r") as f:
-            lines = f.readlines()
-            if not lines:
-                logger.warning("Cookies file is empty.")
-                return False
-            # Check if the file follows Netscape format
-            for line in lines:
-                if line.strip() and not line.startswith("#"):
-                    parts = line.strip().split("\t")
-                    if len(parts) != 7:
-                        logger.error(f"Invalid cookies file format: {line}")
-                        return False
-        return True
-    except Exception as e:
-        logger.error(f"Error validating cookies file: {e}")
-        return False
-
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = update.effective_user.first_name
@@ -187,53 +164,35 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE, url
         "outtmpl": "downloads/%(title)s.%(ext)s",
         "quiet": True,
     }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        video_title = info.get("title", "video")
+        video_path = ydl.prepare_filename(info)
 
-    if validate_cookies_file(COOKIES_PATH):
-        ydl_opts["cookiefile"] = os.path.abspath(COOKIES_PATH)
-    else:
-        logger.warning("Proceeding without cookies.")
-
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            video_title = info.get("title", "video")
-            video_path = ydl.prepare_filename(info)
-
-        # Check file size
-        file_size = os.path.getsize(video_path)
-        if file_size > 50 * 1024 * 1024:  # 50 MB limit
-            logger.info(f"File size: {file_size / (1024 * 1024):.2f} MB")
-            os.remove(video_path)  # Delete the file to save space
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text="The file size exceeds 50 MB, which cannot be sent on Telegram. Please try a smaller video or use a different tool."
-            )
-            return
-
-        # Save to history
-        user_id = update.effective_user.id
-        if user_id not in user_history:
-            user_history[user_id] = []
-        user_history[user_id].append(f"Video: {video_title}")
-
-        await context.bot.send_document(
-            chat_id=update.effective_chat.id,
-            document=open(video_path, "rb"),
-            caption=f"Your video titled '{video_title}' has been downloaded successfully!",
-        )
-        os.remove(video_path)  # Clean up the file after sending
-    except yt_dlp.utils.DownloadError as e:
-        logger.error(f"Download error: {e}")
+    # Check file size
+    file_size = os.path.getsize(video_path)
+    if file_size > 50 * 1024 * 1024:  # 50 MB limit
+        logger.info(f"File size: {file_size / (1024 * 1024):.2f} MB")
+        os.remove(video_path)  # Delete the file to save space
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text="Failed to download the video. Please try again later or check the link."
+            text="We're unfortunately sorry 😔, but the video file size exceeds 50 MB, which cannot be sent on Telegram. "
+                 "Please try a smaller video or use a different tool."
         )
-    except Exception as e:
-        logger.error(f"Unexpected error: {e}")
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text="An unexpected error occurred. Please try again later."
-        )
+        return
+
+    # Save to history
+    user_id = update.effective_user.id
+    if user_id not in user_history:
+        user_history[user_id] = []
+    user_history[user_id].append(f"Video: {video_title}")
+
+    await context.bot.send_document(
+        chat_id=update.effective_chat.id,
+        document=open(video_path, "rb"),
+        caption=f"Your video titled '{video_title}' has been downloaded successfully!",
+    )
+
 
 # Download audio
 async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str):
@@ -249,53 +208,34 @@ async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE, url
         ],
         "quiet": True,
     }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        audio_title = info.get("title", "audio")
+        audio_path = ydl.prepare_filename(info).replace(".webm", ".mp3")
 
-    if validate_cookies_file(COOKIES_PATH):
-        ydl_opts["cookiefile"] = os.path.abspath(COOKIES_PATH)
-    else:
-        logger.warning("Proceeding without cookies.")
-
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            audio_title = info.get("title", "audio")
-            audio_path = ydl.prepare_filename(info).replace(".webm", ".mp3")
-
-        # Check file size
-        file_size = os.path.getsize(audio_path)
-        if file_size > 50 * 1024 * 1024:  # 50 MB limit
-            logger.info(f"File size: {file_size / (1024 * 1024):.2f} MB")
-            os.remove(audio_path)  # Delete the file to save space
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text="The file size exceeds 50 MB, which cannot be sent on Telegram. Please try a smaller audio file or use a different tool."
-            )
-            return
-
-        # Save to history
-        user_id = update.effective_user.id
-        if user_id not in user_history:
-            user_history[user_id] = []
-        user_history[user_id].append(f"Audio: {audio_title}")
-
-        await context.bot.send_document(
-            chat_id=update.effective_chat.id,
-            document=open(audio_path, "rb"),
-            caption=f"Your audio titled '{audio_title}' has been downloaded successfully!",
-        )
-        os.remove(audio_path)  # Clean up the file after sending
-    except yt_dlp.utils.DownloadError as e:
-        logger.error(f"Download error: {e}")
+    # Check file size
+    file_size = os.path.getsize(audio_path)
+    if file_size > 50 * 1024 * 1024:  # 50 MB limit
+        logger.info(f"File size: {file_size / (1024 * 1024):.2f} MB")
+        os.remove(audio_path)  # Delete the file to save space
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text="Failed to download the audio. Please try again later or check the link."
+            text="We're unfortunately sorry 😔, but the audio file size exceeds 50 MB, which cannot be sent on Telegram. "
+                 "Please try a smaller audio file or use a different tool."
         )
-    except Exception as e:
-        logger.error(f"Unexpected error: {e}")
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text="An unexpected error occurred. Please try again later."
-        )
+        return
+
+    # Save to history
+    user_id = update.effective_user.id
+    if user_id not in user_history:
+        user_history[user_id] = []
+    user_history[user_id].append(f"Audio: {audio_title}")
+
+    await context.bot.send_document(
+        chat_id=update.effective_chat.id,
+        document=open(audio_path, "rb"),
+        caption=f"Your audio titled '{audio_title}' has been downloaded successfully!",
+    )
 
 # Process YouTube link
 async def process_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -480,6 +420,6 @@ if __name__ == "__main__":
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         logger.info("Bot stopped...")
-        
+
         # update date month version
-        # UPDATED 10.4.3.2.2025
+        # UPDATED 10.4.3.3.2025
